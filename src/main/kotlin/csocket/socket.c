@@ -34,7 +34,11 @@ JNIEXPORT jint JNICALL Java_server_socket_SocketKt_createAndListen(JNIEnv *env, 
     }
 
     int opt = 1;
-    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("Setsockopt failed");
+        close(server_socket);
+        return -1;
+    }
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -77,8 +81,8 @@ JNIEXPORT jint JNICALL Java_server_socket_SocketKt_acceptClient(JNIEnv *env, job
 }
 
 JNIEXPORT jstring JNICALL Java_server_socket_SocketKt_getMessage(JNIEnv *env, jobject obj, jint client_socket) {
-    if (client_socket == -1) {
-        perror("Invalid socket");
+    if (client_socket < 0) {
+        fprintf(stderr, "Invalid or closed socket: %d\n", client_socket);
         return NULL;
     }
 
@@ -89,24 +93,23 @@ JNIEXPORT jstring JNICALL Java_server_socket_SocketKt_getMessage(JNIEnv *env, jo
         buffer[bytes_read] = '\0';
         return (*env)->NewStringUTF(env, buffer);
     } else if (bytes_read == 0) {
-        // Client disconnected, handle cleanup
         printf("Client disconnected: socket %d\n", client_socket);
-        close(client_socket);  // Close the socket after disconnection
-        return NULL;  // Return NULL to indicate no more messages
+        close(client_socket);
+        return NULL;
     } else if (bytes_read < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            // Other error, possibly client disconnected
             perror("Recv error");
-            close(client_socket);  // Close the socket in case of error
+            close(client_socket);
         }
+        return NULL;
     }
 
-    return NULL;  // No message received
+    return NULL;
 }
 
 JNIEXPORT jint JNICALL Java_server_socket_SocketKt_sendMessage(JNIEnv *env, jobject obj, jint client_socket, jstring message) {
-    if (client_socket == -1) {
-        perror("Invalid socket");
+    if (client_socket < 0) {
+        fprintf(stderr, "Invalid socket: %d\n", client_socket);
         return -1;
     }
 
