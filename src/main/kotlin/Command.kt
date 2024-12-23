@@ -1,11 +1,13 @@
 package server
 
 
-import models.Client
+import models.UserGsonConverter
 import server.database.DataBase
 import server.models.LoginModel
+import server.socket.Socket
 import server.socket.sendMessage
 import java.sql.SQLException
+import java.sql.Statement
 
 
 fun parseMessage(message: String): ParsedMessage? {
@@ -36,62 +38,83 @@ data class ParsedMessage(
 }
 
 
-class Command {
-    companion object {
+object Command {
 
-        val connection = DataBase.getConnection()
+    private val connection = DataBase.getConnection()
+    fun register(parameters: String, clientSocket: Int) {
 
+        val client = UserGsonConverter.fromJson(parameters)
 
-        fun register(client: Client) {
-            println("add")
-            if (connection != null) {
-                val insertQuery = """
-            INSERT INTO clients (
-            first_name,
-            last_name, 
-            email, 
-            phone_number, 
-            date_of_birth, 
-            address) 
+        if (connection != null && client != null) {
+            val insertQuery = """
+            INSERT INTO users (
+                first_name,
+                last_name, 
+                email, 
+                phone_number, 
+                date_of_birth,
+                address
+                ) 
             VALUES (?, ?, ?, ?, ?, ?)
         """
-                try {
-                    val preparedStatement = connection.prepareStatement(insertQuery)
-                    preparedStatement.setString(1, client.name)
-                    preparedStatement.setString(2, client.name)
-                    preparedStatement.setString(3, client.email)
-                    preparedStatement.setString(4, client.phone)
-                    preparedStatement.setString(5, client.date)
-                    preparedStatement.setString(6, client.address)
+            try {
+                val preparedStatement = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)
+                // Split the name into first and last names
+                val names = client.name.split(" ")
+                val firstName = names.getOrNull(0) ?: ""
+                val lastName = names.getOrNull(1) ?: ""
 
+                // Set the parameters for the prepared statement
+                preparedStatement.setString(1, firstName) // first name
+                preparedStatement.setString(2, lastName) // last name
+                preparedStatement.setString(3, client.email) // email
+                preparedStatement.setString(4, client.phone) // phone
+                preparedStatement.setString(5, formatDate(client.date)) // date of birth
+                preparedStatement.setString(6, client.address) // address
 
-                    // Execute the query
-                    val rowsAffected = preparedStatement.executeUpdate()
-                    if (rowsAffected > 0) {
-                        println("New client added successfully.")
-                    } else {
-                        println("Failed to add the new client.")
+                // Execute the query
+                val rowsAffected = preparedStatement.executeUpdate()
+                if (rowsAffected > 0) {
+                    println("New client added successfully.")
+                    val generatedKeys = preparedStatement.generatedKeys
+                    if (generatedKeys.next()) {
+                        val userId = generatedKeys.getInt(1) // Get the generated user_id
+                        Socket.sendMessageToClient(clientSocket, userId.toString())
                     }
-                } catch (e: SQLException) {
-                    println("Error inserting client: ${e.message}")
+                } else {
+                    println("Failed to add the new client.")
                 }
+            } catch (e: SQLException) {
+                println("Error inserting client: ${e.message}")
             }
-
         }
+    }
 
 
-        fun login(login: LoginModel, clientSocket: Int) {
-            val loginquery = """SELECT * FROM clients 
+    fun login(login: LoginModel, clientSocket: Int) {
+        val loginquery = """SELECT * FROM clients 
                 WHERE first_name = "${login.username}"
             """
-            val result = DataBase.runQueryAndGetResults(loginquery)
-            println(result)
-            if (result.isNotEmpty()) {
-                println(clientSocket)
-                sendMessage(clientSocket = clientSocket, "login")
-            } else {
-                sendMessage(clientSocket, "fail")
-            }
+        val result = DataBase.runQuery(loginquery, true)
+        println(result)
+        if (result.isNotEmpty()) {
+            println(clientSocket)
+            sendMessage(clientSocket = clientSocket, "login")
+        } else {
+            sendMessage(clientSocket, "fail")
         }
+    }
+}
+
+
+fun formatDate(date: String): String {
+    return if (date.length == 8) {
+        // Convert from DDMMYYYY to YYYY-MM-DD
+        val day = date.substring(0, 2)
+        val month = date.substring(2, 4)
+        val year = date.substring(4, 8)
+        "$year-$month-$day" // Format as YYYY-MM-DD
+    } else {
+        date // If the date is not in the expected format, return it as-is or handle it as an error
     }
 }

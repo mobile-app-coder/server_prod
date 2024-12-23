@@ -6,7 +6,7 @@ import java.sql.SQLException
 import java.sql.Statement
 
 object DataBase {
-    private val url = "jdbc:mysql://localhost:3306/prod"
+    private val url = "jdbc:mysql://localhost:3306/bank"
     private val user = "shahriyor"  // your database username
     private val password = "coder"
 
@@ -37,22 +37,31 @@ object DataBase {
     }
 
     // Example of running a database query
-    fun runQueryAndGetResults(query: String): List<Map<String, String>> {
+    fun runQuery(query: String, isSelectQuery: Boolean = false): List<Map<String, String>> {
         val results = mutableListOf<Map<String, String>>()
         val conn = getConnection()
+
         if (conn != null) {
             try {
                 val stmt: Statement = conn.createStatement()
-                val resultSet = stmt.executeQuery(query)
-                val metaData = resultSet.metaData
-                val columnCount = metaData.columnCount
 
-                while (resultSet.next()) {
-                    val row = mutableMapOf<String, String>()
-                    for (i in 1..columnCount) {
-                        row[metaData.getColumnName(i)] = resultSet.getString(i)
+                if (isSelectQuery) {
+                    // If it's a SELECT query, we use executeQuery
+                    val resultSet = stmt.executeQuery(query)
+                    val metaData = resultSet.metaData
+                    val columnCount = metaData.columnCount
+
+                    while (resultSet.next()) {
+                        val row = mutableMapOf<String, String>()
+                        for (i in 1..columnCount) {
+                            row[metaData.getColumnName(i)] = resultSet.getString(i)
+                        }
+                        results.add(row)
                     }
-                    results.add(row)
+                } else {
+                    // For INSERT, UPDATE, DELETE, we use executeUpdate
+                    val rowsAffected = stmt.executeUpdate(query)
+                    println("Query executed successfully, $rowsAffected rows affected.")
                 }
             } catch (e: SQLException) {
                 println("Error executing query: ${e.message}")
@@ -60,6 +69,7 @@ object DataBase {
         }
         return results
     }
+
 
 
 }

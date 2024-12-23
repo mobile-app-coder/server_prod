@@ -4,7 +4,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import models.Client
 import server.Command
 import server.models.parseJsonToLoginModel
 import server.parseMessage
@@ -37,6 +36,7 @@ object Socket {
         stopServer()
     }
 
+
     private suspend fun acceptClients() = coroutineScope {
         while (isAlive) {
             val clientSocket = acceptClient()
@@ -66,24 +66,12 @@ object Socket {
 
     private fun processRequest(message: String, clientSocket: Int): String {
         val request = parseMessage(message)
-        println(request.toString())
         if (request != null) {
 
             when (request.action) {
                 "client" -> {
-                    println("clint send request")
-                    val newClient = Client(
-                        name = "John Doe",
-                        date = "1990-01-01",
-                        address = "1234 Elm St",
-                        email = "john.doe@example.com",
-                        phone = "123-456-7890",
-                        login = "johndoe",
-                        password = "securePassword"
-                    )
-
                     when (request.command) {
-                        "register" -> Command.register(newClient)
+                        "register" -> Command.register(request.parameters, clientSocket)
                     }
                 }
 
@@ -114,5 +102,10 @@ object Socket {
         for (clientSocket in clients) {
             sendMessage(clientSocket, message)
         }
+    }
+
+
+    fun sendMessageToClient(clientSocket: Int, message: String) {
+        sendMessage(clientSocket, message)
     }
 }
