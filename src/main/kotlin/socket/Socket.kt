@@ -4,9 +4,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import server.Command
-import server.models.parseJsonToLoginModel
-import server.parseMessage
+import server.commands.CommandCustomer
+import server.commands.CommandStaff
+import server.commands.GeneralCommand
+import server.commands.parseMessage
+import server.models.LoginModelGsonConverter
 
 external fun stopServer()
 external fun createAndListen(): Int
@@ -15,10 +17,10 @@ external fun getMessage(clientSocket: Int): String?
 external fun sendMessage(clientSocket: Int, message: String): Int
 
 object Socket {
-    var isAlive = true
-    var serverSocket = -1
-    var clients = mutableListOf<Int>()
-    var admins = mutableListOf<Int>()
+    private var isAlive = true
+    private var serverSocket = -1
+    private var customers = mutableListOf<Int>()
+    private var admins = mutableListOf<Int>()
 
     init {
         System.setProperty("java.library.path", "/home/shahriyor/IdeaProjects/server_prod/src/main/kotlin/csocket")
@@ -41,9 +43,8 @@ object Socket {
         while (isAlive) {
             val clientSocket = acceptClient()
             if (clientSocket >= 0) {
-                println("Client connected: $clientSocket")
                 launch { handleClient(clientSocket) }
-                clients.add(clientSocket)
+
             } else {
                 delay(100) // Prevent busy-waiting
             }
@@ -54,35 +55,39 @@ object Socket {
         while (isAlive) {
             val message = getMessage(clientSocket)
             if (message != null) {
-                println("$clientSocket: $message")
                 processRequest(message, clientSocket)
             } else {
                 delay(100) // Prevent busy-waiting
             }
         }
-        clients.remove(clientSocket)
         println("Client $clientSocket disconnected.")
     }
 
     private fun processRequest(message: String, clientSocket: Int): String {
         val request = parseMessage(message)
         if (request != null) {
-
             when (request.action) {
                 "client" -> {
+                    customers.add(clientSocket)
                     when (request.command) {
-                        "register" -> Command.register(request.parameters, clientSocket)
+                        "register" -> CommandCustomer.register(request.parameters, clientSocket)
+                        "login" -> CommandCustomer.login(request.parameters, clientSocket)
+                        "userdata" -> CommandCustomer.returnUserData(request.parameters, clientSocket)
+                        "accounttype" -> GeneralCommand.getAccountType(clientSocket)
                     }
                 }
 
                 "staff" -> {
+                    admins.add(clientSocket)
                     when (request.command) {
                         "login" -> {
                             println("login requested")
                             if (request.parameters.isNotEmpty()) {
                                 println(request.parameters)
-                                val login = parseJsonToLoginModel(request.parameters)
-                                Command.login(parseJsonToLoginModel(request.parameters), clientSocket)
+                                val login = LoginModelGsonConverter.fromJson(request.parameters)
+                                if (login != null) {
+                                    CommandStaff.login(login, clientSocket)
+                                }
                             }
                         }
                     }
@@ -99,7 +104,7 @@ object Socket {
     }
 
     fun sendMessageToAllClients(message: String) {
-        for (clientSocket in clients) {
+        for (clientSocket in customers) {
             sendMessage(clientSocket, message)
         }
     }
