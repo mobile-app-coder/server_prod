@@ -1,13 +1,18 @@
-package models
+package model
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 
-data class Account(
-    val accountHolderName: String,
-    val accountType: AccountType,
-    val initialDeposit: Double
+data class BankAccount(
+    val accountId: Int,
+    val accountHolder: String,
+    val accountTypeId: Int,
+    val balance: Double,
+    val dateCreated: String,
+    val status: String,
+    val currencyId: Int,
+    val userId: Int
 )
 
 object AccountGsonConverter {
@@ -18,7 +23,7 @@ object AccountGsonConverter {
     }
 
     // Convert Account object to JSON string
-    fun toJson(account: Account): String? = try {
+    fun toJson(account: BankAccount): String? = try {
         gson.toJson(account)
     } catch (e: Exception) {
         e.printStackTrace() // Handle error properly in production
@@ -26,15 +31,15 @@ object AccountGsonConverter {
     }
 
     // Convert JSON string to Account object
-    fun fromJson(jsonString: String): Account? = try {
-        gson.fromJson(jsonString, Account::class.java)
+    fun fromJson(jsonString: String): BankAccount? = try {
+        gson.fromJson(jsonString, BankAccount::class.java)
     } catch (e: Exception) {
         e.printStackTrace() // Handle error properly in production
         null
     }
 
     // Convert a list of Account objects to JSON string
-    fun toJsonList(accounts: List<Account>): String? = try {
+    fun toJsonList(accounts: List<BankAccount>): String? = try {
         gson.toJson(accounts)
     } catch (e: Exception) {
         e.printStackTrace() // Handle error properly in production
@@ -42,8 +47,8 @@ object AccountGsonConverter {
     }
 
     // Convert JSON string to list of Account objects
-    fun fromJsonList(jsonString: String): List<Account>? = try {
-        val listType = object : TypeToken<List<Account>>() {}.type
+    fun fromJsonList(jsonString: String): List<BankAccount>? = try {
+        val listType = object : TypeToken<List<BankAccount>>() {}.type
         gson.fromJson(jsonString, listType)
     } catch (e: Exception) {
         e.printStackTrace() // Handle error properly in production

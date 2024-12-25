@@ -25,7 +25,7 @@ void setNonBlocking(int socket_fd) {
     }
 }
 
-JNIEXPORT jint JNICALL Java_server_socket_SocketKt_createAndListen(JNIEnv *env, jobject obj) {
+JNIEXPORT jint JNICALL Java_server_communication_SocketKt_createAndListen(JNIEnv *env, jobject obj) {
     struct sockaddr_in server_addr;
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -60,7 +60,7 @@ JNIEXPORT jint JNICALL Java_server_socket_SocketKt_createAndListen(JNIEnv *env, 
     return server_socket;
 }
 
-JNIEXPORT jint JNICALL Java_server_socket_SocketKt_acceptClient(JNIEnv *env, jobject obj) {
+JNIEXPORT jint JNICALL Java_server_communication_SocketKt_acceptClient(JNIEnv *env, jobject obj) {
     struct sockaddr_in client_addr;
     socklen_t addr_len = sizeof(client_addr);
     struct pollfd pfd;
@@ -80,7 +80,7 @@ JNIEXPORT jint JNICALL Java_server_socket_SocketKt_acceptClient(JNIEnv *env, job
     return -1;
 }
 
-JNIEXPORT jstring JNICALL Java_server_socket_SocketKt_getMessage(JNIEnv *env, jobject obj, jint client_socket) {
+JNIEXPORT jstring JNICALL Java_server_communication_SocketKt_getMessage(JNIEnv *env, jobject obj, jint client_socket) {
     if (client_socket < 0) {
         fprintf(stderr, "Invalid or closed socket: %d\n", client_socket);
         return NULL;
@@ -107,7 +107,7 @@ JNIEXPORT jstring JNICALL Java_server_socket_SocketKt_getMessage(JNIEnv *env, jo
     return NULL;
 }
 
-JNIEXPORT jint JNICALL Java_server_socket_SocketKt_sendMessage(JNIEnv *env, jobject obj, jint client_socket, jstring message) {
+JNIEXPORT jint JNICALL Java_server_communication_SocketKt_sendMessage(JNIEnv *env, jobject obj, jint client_socket, jstring message) {
     if (client_socket < 0) {
         fprintf(stderr, "Invalid socket: %d\n", client_socket);
         return -1;
@@ -127,7 +127,7 @@ JNIEXPORT jint JNICALL Java_server_socket_SocketKt_sendMessage(JNIEnv *env, jobj
     return bytes_sent;
 }
 
-JNIEXPORT void JNICALL Java_server_socket_SocketKt_stopServer(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_server_communication_SocketKt_stopServer(JNIEnv *env, jobject obj) {
     if (server_socket != -1) {
         close(server_socket);
         printf("Server stopped.\n");

@@ -1,7 +1,7 @@
 package server
 
 import server.database.DataBase
-import server.socket.Socket
+import server.communication.Socket
 
 
 fun main() {

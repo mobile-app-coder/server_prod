@@ -1,14 +1,12 @@
-package server.socket
+package server.communication
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import server.commands.CommandCustomer
-import server.commands.CommandStaff
-import server.commands.GeneralCommand
-import server.commands.parseMessage
-import server.models.LoginModelGsonConverter
+import server.commands.UserServices
+import server.logic.bank.StaffRepository
+import server.logic.bank.UserRepository
 
 external fun stopServer()
 external fun createAndListen(): Int
@@ -17,14 +15,18 @@ external fun getMessage(clientSocket: Int): String?
 external fun sendMessage(clientSocket: Int, message: String): Int
 
 object Socket {
+
     private var isAlive = true
     private var serverSocket = -1
     private var customers = mutableListOf<Int>()
     private var admins = mutableListOf<Int>()
 
     init {
-        System.setProperty("java.library.path", "/home/shahriyor/IdeaProjects/server_prod/src/main/kotlin/csocket")
-        System.load("/home/shahriyor/IdeaProjects/server_prod/src/main/kotlin/csocket/socket.so")
+        System.setProperty(
+            "java.library.path",
+            "/home/shahriyor/IdeaProjects/server_prod/src/main/kotlin/communication"
+        )
+        System.load("/home/shahriyor/IdeaProjects/server_prod/src/main/kotlin/communication/socket.so")
     }
 
     private var clientHandler: ((Int) -> Unit)? = null
@@ -37,7 +39,6 @@ object Socket {
         isAlive = false
         stopServer()
     }
-
 
     private suspend fun acceptClients() = coroutineScope {
         while (isAlive) {
@@ -64,33 +65,17 @@ object Socket {
     }
 
     private fun processRequest(message: String, clientSocket: Int): String {
-        val request = parseMessage(message)
+        val request = UserServices.parseMessage(message)
         if (request != null) {
             when (request.action) {
                 "client" -> {
                     customers.add(clientSocket)
-                    when (request.command) {
-                        "register" -> CommandCustomer.register(request.parameters, clientSocket)
-                        "login" -> CommandCustomer.login(request.parameters, clientSocket)
-                        "userdata" -> CommandCustomer.returnUserData(request.parameters, clientSocket)
-                        "accounttype" -> GeneralCommand.getAccountType(clientSocket)
-                    }
+                    UserRepository.processRequest(message = message, clientSocket = clientSocket)
                 }
 
                 "staff" -> {
                     admins.add(clientSocket)
-                    when (request.command) {
-                        "login" -> {
-                            println("login requested")
-                            if (request.parameters.isNotEmpty()) {
-                                println(request.parameters)
-                                val login = LoginModelGsonConverter.fromJson(request.parameters)
-                                if (login != null) {
-                                    CommandStaff.login(login, clientSocket)
-                                }
-                            }
-                        }
-                    }
+                    StaffRepository.processRequest(message = message, clientSocket = clientSocket)
                 }
             }
         }
