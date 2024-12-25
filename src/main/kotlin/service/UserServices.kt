@@ -6,10 +6,12 @@ import model.BankAccount
 import model.User
 import model.UserGsonConverter
 import server.communication.Socket
-import server.repository.TransactionRepository
 import server.database.DataBase
 import server.model.AccountTransferGsonConverter
+import server.model.DepositGsonConverter
 import server.models.LoginModelGsonConverter
+import server.repository.DepositRepository
+import server.repository.TransactionRepository
 import java.security.MessageDigest
 import java.sql.PreparedStatement
 import java.sql.SQLException
@@ -351,7 +353,16 @@ object UserServices {
         val transfer = AccountTransferGsonConverter.fromJson(message)
         if (transfer != null) {
             val result = TransactionRepository.recordTransaction(transfer)
-            Socket.sendMessageToClient(clientSocket = clientSocket, message = message)
+            Socket.sendMessageToClient(clientSocket = clientSocket, message = result)
+        }
+    }
+
+
+    fun deposit(clientSocket: Int, message: String) {
+        val deposit = DepositGsonConverter.fromJson(message)
+        if (deposit != null) {
+            val result = DepositRepository.depositFunds(deposit)
+            Socket.sendMessageToClient(clientSocket = clientSocket, message = result)
         }
     }
 

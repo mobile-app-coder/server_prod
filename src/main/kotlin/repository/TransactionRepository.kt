@@ -42,23 +42,23 @@ object TransactionRepository {
 
 
             // Step 4: Update the sender's account balance (deduct money)
-            val updateSenderBalanceQuery = "UPDATE accounts SET balance = balance - ? WHERE account_id = ?"
+            val updateSenderBalanceQuery = "UPDATE BankAccount SET balance = balance - ? WHERE accountId = ?"
             val updateSenderStmt = connection.prepareStatement(updateSenderBalanceQuery)
             updateSenderStmt.setDouble(1, transfer.amount)
             updateSenderStmt.setInt(2, transfer.senderAccountId)
             updateSenderStmt.executeUpdate()
 
 
-            val updateReceiverBalanceQuery = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?"
+            val updateReceiverBalanceQuery = "UPDATE BankAccount SET balance = balance + ? WHERE accountId = ?"
             val updateReceiverStmt = connection.prepareStatement(updateReceiverBalanceQuery)
             updateReceiverStmt.setDouble(1, transfer.amount)
             updateReceiverStmt.setInt(2, transfer.receiverAccountId)
             updateReceiverStmt.executeUpdate()
 
             // Step 6: Commit the transaction if all queries are successful
-            connection.commit()
+
         } catch (e: SQLException) {
-            connection.rollback()
+            //connection.rollback()
             successMessage = "Transfer failed: ${e.message}"
             e.printStackTrace()
         } finally {

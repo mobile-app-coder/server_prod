@@ -1,12 +1,13 @@
 package server.logic.bank
 
 import server.commands.StaffService
-import server.commands.parseMessage
+import server.commands.UserServices
+
 import server.models.LoginModelGsonConverter
 
 object StaffRepository {
     fun processRequest(message: String, clientSocket: Int): String {
-        val request = parseMessage(message)
+        val request = UserServices.parseMessage(message)
         if (request != null) {
             when (request.action) {
                 "staff" -> {

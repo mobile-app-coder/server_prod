@@ -17,15 +17,18 @@ object UserRepository {
                         "accounttype" -> GeneralCommand.getAccountType(clientSocket)
                         "createaccount" -> UserServices.createAccount(request.parameters, clientSocket)
                         "currency" -> GeneralCommand.getCurrencies(clientSocket)
-                        "deposit" -> {
 
-                        }
-                        "transaction" -> UserServices.transfer(
+                        "deposit" -> UserServices.deposit(
                             clientSocket = clientSocket,
                             message = request.parameters
                         )
 
+                        "transaction" -> UserServices.transfer(
+                            clientSocket = clientSocket, message = request.parameters
+                        )
+
                         "loan" -> {}
+
                         "withdraw" -> {}
                     }
                 }

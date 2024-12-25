@@ -1,6 +1,7 @@
 package server.repository
 
 import server.database.DataBase
+import server.model.Deposit
 import java.sql.Connection
 import java.sql.SQLException
 import java.sql.Timestamp
@@ -8,7 +9,7 @@ import java.sql.Timestamp
 object DepositRepository {
 
 
-    fun depositFunds(accountId: Int, depositAmount: Double, depositType: String): String {
+    fun depositFunds(deposit: Deposit): String {
         // Database connection parameters
 
         var connection: Connection? = null
@@ -23,7 +24,7 @@ object DepositRepository {
                 // Step 2: Check if the account exists
                 val checkAccountQuery = "SELECT balance FROM BankAccount WHERE account_id = ?"
                 val checkAccountStmt = connection.prepareStatement(checkAccountQuery)
-                checkAccountStmt.setInt(1, accountId)
+                checkAccountStmt.setInt(1, deposit.accountId)
                 val accountResult = checkAccountStmt.executeQuery()
 
                 if (!accountResult.next()) {
@@ -36,9 +37,9 @@ object DepositRepository {
             VALUES (?, ?, ?, ?, ?)
         """
                 val insertDepositStmt = connection.prepareStatement(insertDepositQuery)
-                insertDepositStmt.setInt(1, accountId)
-                insertDepositStmt.setDouble(2, depositAmount)
-                insertDepositStmt.setString(3, depositType)
+                insertDepositStmt.setInt(1, deposit.accountId)
+                insertDepositStmt.setDouble(2, deposit.depositAmount)
+                insertDepositStmt.setString(3, deposit.depositType)
                 insertDepositStmt.setString(4, "completed")
                 insertDepositStmt.setTimestamp(5, Timestamp(System.currentTimeMillis()))
                 insertDepositStmt.executeUpdate()
@@ -57,15 +58,15 @@ object DepositRepository {
                 val insertTransactionStmt = connection.prepareStatement(insertTransactionQuery)
                 insertTransactionStmt.setInt(1, depositId)
                 insertTransactionStmt.setString(2, "deposit")
-                insertTransactionStmt.setDouble(3, depositAmount)
+                insertTransactionStmt.setDouble(3, deposit.depositAmount)
                 insertTransactionStmt.setTimestamp(4, Timestamp(System.currentTimeMillis()))
                 insertTransactionStmt.executeUpdate()
 
                 // Step 5: Update the account balance (add deposit amount)
                 val updateAccountQuery = "UPDATE accounts SET balance = balance + ? WHERE account_id = ?"
                 val updateAccountStmt = connection.prepareStatement(updateAccountQuery)
-                updateAccountStmt.setDouble(1, depositAmount)
-                updateAccountStmt.setInt(2, accountId)
+                updateAccountStmt.setDouble(1, deposit.depositAmount)
+                updateAccountStmt.setInt(2, deposit.accountId)
                 updateAccountStmt.executeUpdate()
 
                 // Step 6: Commit the transaction
