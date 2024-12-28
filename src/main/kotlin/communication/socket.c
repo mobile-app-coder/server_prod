@@ -11,7 +11,7 @@
 
 #define PORT 5000
 #define BUFFER_SIZE 1024
-
+#define MAX_CLIENTS 1000
 int server_socket;
 
 void setNonBlocking(int socket_fd) {
@@ -68,14 +68,24 @@ JNIEXPORT jint JNICALL Java_server_communication_SocketKt_acceptClient(JNIEnv *e
     pfd.events = POLLIN;
 
     int poll_status = poll(&pfd, 1, 100);  // Poll with timeout
-    if (poll_status > 0 && (pfd.revents & POLLIN)) {
-        int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_len);
-        if (client_socket >= 0) {
-            setNonBlocking(client_socket);
-            return client_socket;
-        } else {
-            perror("Accept failed");
+    if (poll_status > 0) {
+        if (pfd.revents & POLLIN) {
+            int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_len);
+            if (client_socket >= 0) {
+                setNonBlocking(client_socket);
+                printf("Accepted connection from %s:%d\n",
+                       inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                return client_socket;
+            } else {
+                perror("Accept failed");
+            }
         }
+    } else if (poll_status == 0) {
+        // Timeout occurred, no incoming connection
+        return -1;
+    } else {
+        perror("Poll failed");
+        return -1;
     }
     return -1;
 }
@@ -127,9 +137,49 @@ JNIEXPORT jint JNICALL Java_server_communication_SocketKt_sendMessage(JNIEnv *en
     return bytes_sent;
 }
 
+int client_sockets[MAX_CLIENTS]; // Array to store client sockets
+
+
+void cleanupClients() {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (client_sockets[i] > 0) {
+            close(client_sockets[i]);
+            client_sockets[i] = -1;
+        }
+    }
+}
+
 JNIEXPORT void JNICALL Java_server_communication_SocketKt_stopServer(JNIEnv *env, jobject obj) {
+    cleanupClients();
     if (server_socket != -1) {
         close(server_socket);
         printf("Server stopped.\n");
     }
 }
+
+JNIEXPORT jstring JNICALL Java_server_communication_SocketKt_getClientAddress(JNIEnv *env, jobject obj, jint client_socket) {
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(client_socket, (struct sockaddr *)&addr, &addr_len) == 0) {
+        char *ip_str = inet_ntoa(addr.sin_addr);
+        return (*env)->NewStringUTF(env, ip_str);
+    } else {
+        perror("getpeername");
+        return NULL;
+    }
+}
+
+JNIEXPORT jint JNICALL Java_server_communication_SocketKt_getClientPortAddress(JNIEnv *env, jobject obj, jint client_socket) {
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(client_socket, (struct sockaddr *)&addr, &addr_len) == 0) {
+        return ntohs(addr.sin_port);
+    } else {
+        perror("getpeername");
+        return -1;
+    }
+}
+
+

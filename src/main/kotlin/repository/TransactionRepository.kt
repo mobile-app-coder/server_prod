@@ -72,5 +72,50 @@ object TransactionRepository {
         return "ok|$successMessage"
     }
 
+    fun getTransactionsByAccountId(accountId: Int): List<AccountTransfer> {
+
+        println("transaction history called")
+        val connection = DataBase.getConnection()!!
+        val transactions = mutableListOf<AccountTransfer>()
+
+        try {
+            val query = """
+            SELECT transfer_id,sender_account_id, receiver_account_id, amount, description, timestamp
+            FROM account_transfers
+            WHERE sender_account_id = ? OR receiver_account_id = ?
+            ORDER BY timestamp ASC
+        """
+
+            val preparedStatement: PreparedStatement = connection.prepareStatement(query)
+            preparedStatement.setInt(1, accountId)
+            preparedStatement.setInt(2, accountId)
+
+            val resultSet = preparedStatement.executeQuery()
+
+            while (resultSet.next()) {
+                val transaction = AccountTransfer(
+                    transferId = resultSet.getInt("transfer_id"),
+                    senderAccountId = resultSet.getInt("sender_account_id"),
+                    receiverAccountId = resultSet.getInt("receiver_account_id"),
+                    amount = resultSet.getDouble("amount"),
+                    description = resultSet.getString("description"),
+                    timestamp = resultSet.getTimestamp("timestamp")
+                )
+                transactions.add(transaction)
+            }
+
+        } catch (e: SQLException) {
+            e.printStackTrace()
+        } finally {
+            try {
+                connection.close()
+            } catch (e: SQLException) {
+                e.printStackTrace()
+            }
+        }
+
+        return transactions
+    }
+
 }
 

@@ -6,6 +6,7 @@ import model.BankAccount
 import model.User
 import model.UserGsonConverter
 import server.communication.Socket
+import server.communication.Socket.getBankStaffSocket
 import server.database.DataBase
 import server.model.AccountTransferGsonConverter
 import server.model.DepositGsonConverter
@@ -167,7 +168,7 @@ object UserServices {
                 accountStatement.setDouble(
                     3, account.balance ?: 0.0
                 ) // Initial balance (could be in the Account model)
-                accountStatement.setString(4, "Active") // Account status
+                accountStatement.setString(4, "Pending Approval") // Account status
                 accountStatement.setString(5, account.currencyId.toString()) // Currency ID
                 accountStatement.setInt(6, account.userId) // User ID (provided in Account model)
 
@@ -199,6 +200,7 @@ object UserServices {
                             Socket.sendMessageToClient(clientSocket, message)
                         }
                         println("Account created successfully: $accountJson")
+                        sendToBankStaffForApproval(newAccount)
                     }
                 } else {
                     Socket.sendMessageToClient(clientSocket, """{"error": "account_creation_failed"}""")
@@ -221,6 +223,21 @@ object UserServices {
         }
     }
 
+    fun sendToBankStaffForApproval(account: BankAccount) {
+        // Assuming we have a function to send data to the bank staff
+        // The notification should include the user's details and the request to approve the account
+        val staffSocket =
+            getBankStaffSocket()
+        val accountString =
+            AccountGsonConverter.toJsonList(listOf(account))// This would be implemented to get the appropriate bank staff socket connection
+        val notificationMessage = """
+       newaccount|$accountString
+        
+    """
+
+        Socket.sendMessageToClient(staffSocket, notificationMessage)
+        println("Notification sent to bank staff for approval.")
+    }
 
     fun login(parameters: String, clientSocket: Int) {
         val connection = DataBase.getConnection()
@@ -337,7 +354,7 @@ object UserServices {
                 // Convert to JSON and send to client
 
                 Socket.sendMessageToClient(clientSocket, message)
-                println("Data sent successfully for user ID: $userId")
+                println("Data sent successfully for user ID: $userId\ndata:$message")
 
             } catch (e: SQLException) {
                 println("Error fetching user or account data: ${e.message}")
@@ -350,6 +367,7 @@ object UserServices {
     }
 
     fun transfer(clientSocket: Int, message: String) {
+        println("transfer")
         val transfer = AccountTransferGsonConverter.fromJson(message)
         if (transfer != null) {
             val result = TransactionRepository.recordTransaction(transfer)
@@ -359,6 +377,7 @@ object UserServices {
 
 
     fun deposit(clientSocket: Int, message: String) {
+        println("deposit")
         val deposit = DepositGsonConverter.fromJson(message)
         if (deposit != null) {
             val result = DepositRepository.depositFunds(deposit)
@@ -366,6 +385,13 @@ object UserServices {
         }
     }
 
+
+    fun returnTransactionHistory(clientSocket: Int, message: String) {
+        println("returnTransactionHistory")
+        val transactions = TransactionRepository.getTransactionsByAccountId(accountId = message.toInt())
+        val response = AccountTransferGsonConverter.toJsonList(transactions)
+        Socket.sendMessageToClient(clientSocket = clientSocket, message = "ok|$response")
+    }
 
 }
 

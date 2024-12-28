@@ -19,15 +19,20 @@ object UserRepository {
                         "currency" -> GeneralCommand.getCurrencies(clientSocket)
 
                         "deposit" -> UserServices.deposit(
-                            clientSocket = clientSocket,
-                            message = request.parameters
+                            clientSocket = clientSocket, message = request.parameters
                         )
 
                         "transaction" -> UserServices.transfer(
                             clientSocket = clientSocket, message = request.parameters
                         )
 
-                        "loan" -> {}
+                        "recenttransaction" -> UserServices.returnTransactionHistory(
+                            clientSocket = clientSocket, message = request.parameters
+                        )
+
+                        "loan" -> {
+                            UserServices.deposit(clientSocket = clientSocket, message = message)
+                        }
 
                         "withdraw" -> {}
                     }

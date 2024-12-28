@@ -1,7 +1,7 @@
 package server
 
-import server.database.DataBase
 import server.communication.Socket
+import server.database.DataBase
 
 
 fun main() {
@@ -9,7 +9,9 @@ fun main() {
 
     socket.startSocketServer()
     DataBase.getConnection()
-    Thread {
-        Socket.listen()
-    }.start()
+    socket.listen()
+
+    // Prevent main thread from exiting
+    println("Press Ctrl+C to stop the server.")
+    Thread.currentThread().join() // Keeps the main thread alive
 }
